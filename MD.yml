@@ -2,7 +2,7 @@ name: MD
 channels:
   - conda-forge
 dependencies:
-  - python
+  - python=3.11
   - numpy=1.26
   - scipy
   - matplotlib
