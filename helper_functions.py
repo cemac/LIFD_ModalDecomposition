@@ -45,7 +45,7 @@ def POD(X, weight=None):
     Returns
     -------
     pod_modes: Matrix of pod_modes (space, mode_index).
-    eigenvaues: eigenvalues corresponding to the pod_modes.
+    eigval: eigenvalues corresponding to the pod_modes.
     """
     # Store the spatial shape
     orig_shape = X.shape[:-1]
