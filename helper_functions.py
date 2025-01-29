@@ -6,15 +6,17 @@ import requests
 
 def DMD(snapshots, rank=10):
     """
+    Performs DMD on snapshot data, where time is the last axis
+    and snapshots are separated by a constant time interval.
+
     Parameters
     ----------
-        snapshots: Snapshot matrix. Can be multidimensional, but time first be the last axis
-    Return
-    ------
-        eigval: eigenvalues corresponding to the DMD_modes
-        DMD_modes: Matrix of DMD_modes (space, mode_index)
-    Performs DMD on snapshot data, where time is the last axis
-    and snapshots are separated by a constant time interval
+    snapshots: Snapshot matrix. Can be multidimensional, but time first be the last axis.
+    
+    Returns
+    -------
+    eigval: eigenvalues corresponding to the DMD_modes.
+    DMD_modes: Matrix of DMD_modes (space, mode_index).
     """
     orig_shape = snapshots.shape[:-1]
     if snapshots.ndim != 2:
@@ -33,16 +35,17 @@ def DMD(snapshots, rank=10):
     
 def POD(X, weight=None):
     """
-    Computes the POD using the method of snapshots
+    Computes the POD using the method of snapshots.
     
     Parameters
     ----------
-        X: Snapshot matrix. Can be multidimensional, but time first be the last axis
-           weight: Weight matrix for weighting the snapshots
-    Return
-    ------
-        eigval: eigenvalues corresponding to the pod_modes
-        pod_modes: Matrix of pod_modes (space, mode_index)
+    X: Snapshot matrix. Can be multidimensional, but time first be the last axis.
+    weight: Weight matrix for weighting the snapshots.
+    
+    Returns
+    -------
+    eigval: eigenvalues corresponding to the pod_modes.
+    pod_modes: Matrix of pod_modes (space, mode_index).
     """
     # Store the spatial shape
     orig_shape = X.shape[:-1]
@@ -65,11 +68,11 @@ def POD(X, weight=None):
 
 def plot_ODE_data(ode_data):
     """
-    Plots ode data (either 2D or 3D)
+    Plots ode data (either 2D or 3D).
 
     Parameters
     ----------
-        ode_data: np.array with shape (number of snapshots, number of dimensions)
+    ode_data: np.array with shape (number of snapshots, number of dimensions).
     """
     dim = ode_data.shape[-1]
     # Plot the data
@@ -86,15 +89,15 @@ def plot_ODE_data(ode_data):
 
 def plot_cylinder_data(x, y, cylinder_data, fig_ax=None, cmap=None):
     """
-    Plots a snapshot of flow past a cylinder
+    Plots a snapshot of flow past a cylinder.
 
     Parameters
     ----------
-        x : np.array with x-coordinates
-        y : np.array with y-coordinates
-        cylinder_data: np.array with shape (x resolution, y resolution)
-        fig_ax : tuple (fig, ax) obtained with subplot
-        cmap : matplotlib colormap
+    x: np.array with x-coordinates.
+    y: np.array with y-coordinates.
+    cylinder_data: np.array with shape (x resolution, y resolution).
+    fig_ax: tuple (fig, ax) obtained with subplot.
+    cmap: matplotlib colormap.
     """
     if fig_ax is None:
         fig, ax = plt.subplots(1)
