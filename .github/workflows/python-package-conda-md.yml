@@ -1,0 +1,36 @@
+name: Python Package using Conda
+on: [push]
+
+jobs:
+  test:
+    name: Test python ${{ matrix.python-version }} on ${{ matrix.os }}
+
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macOS-latest, windows-latest]
+        python-version: [3.11]
+    steps:
+      - uses: actions/checkout@v2
+        with:
+         submodules: recursive
+      - name: install mamba
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniconda-version: 'latest'
+          auto-update-conda: false
+          use-only-tar-bz2: false
+          environment-file: MD.yml
+          environment-name: MD
+      - name: Install test packages
+        shell: bash -l {0}
+        run: |
+          pip install pytest nbconvert nbformat
+      - name: which python
+        shell: bash -l {0}
+        run: |
+          which python
+      - name: Test with pytest
+        shell: bash -l {0}
+        run: |
+          pytest .github/workflows/test_md_notebooks.py
