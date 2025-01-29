@@ -1,0 +1,11 @@
+name: MD
+channels:
+  - conda-forge
+dependencies:
+  - python
+  - numpy=1.26
+  - scipy
+  - matplotlib
+  - notebook
+  - pysindy
+  - scikit-learn
