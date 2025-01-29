@@ -26,9 +26,9 @@ def DMD(snapshots, rank=10):
     X = snapshots_flattened[:,:-1]
     Y = snapshots_flattened[:,1:]
     U, S, VH = sp.linalg.svds(X, k=rank)
-    Abar = U.conj().T@Y@VH.conj().T@np.diag(1/S)
+    Abar = U.conj().T @ Y @ VH.conj().T @ np.diag(1/S)
     eigval, eigvec = sp.linalg.eigs(Abar, k=rank)
-    DMD_modes = Y@VH.conj().T@np.diag(1/S)@eigvec
+    DMD_modes = Y @ VH.conj().T @ np.diag(1/S) @ eigvec
     DMD_modes = DMD_modes.T
     DMD_modes = DMD_modes.reshape((-1,) + orig_shape)
     return eigval, DMD_modes
@@ -44,8 +44,8 @@ def POD(X, weight=None):
     
     Returns
     -------
-    eigval: eigenvalues corresponding to the pod_modes.
     pod_modes: Matrix of pod_modes (space, mode_index).
+    eigenvaues: eigenvalues corresponding to the pod_modes.
     """
     # Store the spatial shape
     orig_shape = X.shape[:-1]
@@ -55,11 +55,11 @@ def POD(X, weight=None):
     else:
         X_snaps = X
     # Form the covariance matrix
-    C = X_snaps.T@X_snaps
+    C = X_snaps.T @ X_snaps
     # Perform the eigenvalue decompositions
     eigval, eigvec = sp.linalg.eigs(C, k=24)
     # Reconstruct the POD modes
-    pod_modes = X_snaps@eigvec
+    pod_modes = X_snaps @ eigvec
     # Make mode_index the first dimension
     pod_modes = pod_modes.T
     # Unflatten the spatial dimension
