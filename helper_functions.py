@@ -1,70 +1,110 @@
+import os
 import numpy as np
 import scipy.sparse as sp
 import matplotlib.pyplot as plt
-import os
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import requests
 
-def DMD(snapshots, rank=10):
+def DMD(X, rank=10):
     """
     Performs DMD on snapshot data, where time is the last axis
     and snapshots are separated by a constant time interval.
 
     Parameters
     ----------
-    snapshots: Snapshot matrix. Can be multidimensional, but time first be the last axis.
+    snapshots: List of snapshot matrices. Each element is a snapshot matrix for a physical variable.
+       Each matrix can be multidimensional, but time must be the last axis.
+    rank: rank of the approximation of B
     
     Returns
     -------
     eigval: eigenvalues corresponding to the DMD_modes.
-    DMD_modes: Matrix of DMD_modes (space, mode_index).
+    DMD_modes: Matrix of DMD_modes (mode-index, variable, space).
+    dmd_mode_amplitudes: Array of amplitudes of the dmd modes.
     """
-    orig_shape = snapshots.shape[:-1]
-    if snapshots.ndim != 2:
-        snapshots_flattened = snapshots.reshape((np.prod(orig_shape), -1))
-    else:
-        snapshots_flattened = snapshots
-    X = snapshots_flattened[:,:-1]
-    Y = snapshots_flattened[:,1:]
+    orig_shapes = []
+    var_lengths = []
+    A = []
+    for var in X:
+        orig_shapes.append(var.shape[:-1])
+        var_lengths.append(np.prod(orig_shapes[-1]))
+        if var.ndim != 2:
+            A.append(var.reshape((var_lengths[-1], -1)))
+        else:
+            A.append(var)
+    A = np.vstack(A)
+    X = A[:, :-1]
+    Y = A[:, 1:]
     U, S, VH = sp.linalg.svds(X, k=rank)
     Abar = U.conj().T @ Y @ VH.conj().T @ np.diag(1/S)
-    eigval, eigvec = sp.linalg.eigs(Abar, k=rank)
-    DMD_modes = Y @ VH.conj().T @ np.diag(1/S) @ eigvec
-    DMD_modes = DMD_modes.T
-    DMD_modes = DMD_modes.reshape((-1,) + orig_shape)
-    return eigval, DMD_modes
-    
-def POD(X, weight=None):
+    eigval, eigvec = np.linalg.eig(Abar)
+    dmd_modes = Y @ VH.conj().T @ np.diag(1/S) @ eigvec
+    dmd_modes = dmd_modes.T
+    indices = np.argsort(np.abs(eigval.imag))
+    eigval = eigval[indices]
+    dmd_modes = dmd_modes[indices]
+    dmd_mode_amplitudes = np.linalg.lstsq(dmd_modes.T, A)[0]
+    dmd_modes_split = np.split(dmd_modes, np.cumsum(var_lengths)[:-1], axis=1)
+    dmd_modes = []
+    for dmd_mode, orig_shape in zip(dmd_modes_split, orig_shapes):
+        dmd_modes.append(dmd_mode.reshape((-1,) + orig_shape))
+    return eigval, dmd_modes, dmd_mode_amplitudes
+
+def POD(X, weights=None, rank=10):
     """
     Computes the POD using the method of snapshots.
     
     Parameters
     ----------
-    X: Snapshot matrix. Can be multidimensional, but time first be the last axis.
-    weight: Weight matrix for weighting the snapshots.
+    X: List of snapshot matrices. Each element is a snapshot matrix for a physical variable.
+       Each matrix can be multidimensional, but time must be the last axis.
+    weight: List of weight matrices for weighting the snapshots. Each element conatins
+       to the weight matrix for the corresponding element of X.
     
     Returns
     -------
-    pod_modes: Matrix of pod_modes (space, mode_index).
+    pod_modes: Matrix of pod_modes (mode_index, variable, space).
     eigval: eigenvalues corresponding to the pod_modes.
+    pod_mode_amplitudes: Temporal amplitudes corresponding to the pod_modes
     """
-    # Store the spatial shape
-    orig_shape = X.shape[:-1]
-    if X.ndim != 2:
-        # Must flatten spatial dimensions before SVD
-        X_snaps = X.reshape((np.prod(orig_shape), -1))
+    # Create the snapshot matrix
+    orig_shapes = []
+    var_lengths = []
+    A = []
+    for var in X:
+        # Store the spatial shape
+        orig_shapes.append(var.shape[:-1])
+        # Store the spatial degrees of freedom
+        var_lengths.append(np.prod(orig_shapes[-1]))
+        # Flatten and concatenate variables
+        if var.ndim != 2:
+            # Must flatten spatial dimensions before SVD
+            A.append(var.reshape((var_lengths[-1], -1)))
+        else:
+            A.append(var)
+    # Convert to numpy array
+    A = np.vstack(A)
+    # Form the weight matrix
+    if weights==None:
+        W = sp.identity(A.shape[0])
     else:
-        X_snaps = X
+        W = sp.block_diag(weights)
     # Form the covariance matrix
-    C = X_snaps.T @ X_snaps
+    Q = A.T @ W @ A
     # Perform the eigenvalue decompositions
-    eigval, eigvec = sp.linalg.eigs(C, k=24)
+    eigval, eigvec = sp.linalg.eigs(Q, k=rank)
     # Reconstruct the POD modes
-    pod_modes = X_snaps @ eigvec
+    pod_modes = A @ eigvec @ np.diag(1/np.sqrt(eigval))
     # Make mode_index the first dimension
     pod_modes = pod_modes.T
-    # Unflatten the spatial dimension
-    pod_modes = pod_modes.reshape((-1,) + orig_shape)
-    return eigval, pod_modes
+    # Project to get mode_amplitudes
+    pod_mode_amplitudes = pod_modes @ W @ A
+    # Restructure the POD modes for output
+    pod_modes_split = np.split(pod_modes, np.cumsum(var_lengths)[:-1], axis=1)
+    pod_modes = []
+    for pod_mode, orig_shape in zip(pod_modes_split, orig_shapes):
+        pod_modes.append(pod_mode.reshape((-1,) + orig_shape))
+    return eigval, pod_modes, pod_mode_amplitudes
 
 def plot_ODE_data(ode_data):
     """
@@ -106,14 +146,17 @@ def plot_cylinder_data(x, y, cylinder_data, fig_ax=None, cmap=None):
     if cmap is None:
         cmap='plasma'
     circle = plt.Circle((0, 0), 0.5, color='grey')
-    cb = ax.contourf(x, y, cylinder_data, levels=40, cmap=cmap)
+    cb = ax.pcolormesh(x, y, cylinder_data, cmap=cmap, shading='gouraud')
     ax.set_xlim([-1, 8])
     ax.set_ylim([-2, 2])
     ax.add_patch(circle)
     ax.set_aspect(True)
     ax.set_xlabel(r'$x$')
     ax.set_ylabel(r'$y$')
-    fig.colorbar(cb, ax=ax)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    fig.colorbar(cb, cax=cax)
+    return cb
 
 def download_data():
     """
