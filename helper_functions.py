@@ -19,7 +19,9 @@ def DMD(X, rank=10):
     Returns
     -------
     eigval: eigenvalues corresponding to the DMD_modes.
-    DMD_modes: Matrix of DMD_modes (mode-index, variable, space).
+    DMD_modes: List of arrays of dmd modes. Each element of the list gives the dmd modes 
+       for the corresponding physical variable given in X. Each dmd mode array has layout 
+       (mode_index, variable, space).
     dmd_mode_amplitudes: Array of amplitudes of the dmd modes.
     """
     orig_shapes = []
@@ -60,10 +62,11 @@ def POD(X, weights=None, rank=10):
        Each matrix can be multidimensional, but time must be the last axis.
     weight: List of weight matrices for weighting the snapshots. Each element conatins
        to the weight matrix for the corresponding element of X.
-    
     Returns
     -------
-    pod_modes: Matrix of pod_modes (mode_index, variable, space).
+    pod_modes: List of arrays of pod modes. Each element of the list gives the pod modes 
+       for the corresponding physical variable given in X. Each pod mode array has layout 
+       (mode_index, variable, space).
     eigval: eigenvalues corresponding to the pod_modes.
     pod_mode_amplitudes: Temporal amplitudes corresponding to the pod_modes
     """
